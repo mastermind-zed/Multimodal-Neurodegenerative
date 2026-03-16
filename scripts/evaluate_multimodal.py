@@ -10,9 +10,9 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from models.fusion_model import MultimodalDataset, FusionModel
+from models.fusion_model import MultimodalDataset, FusionModel, HybridFusionModel
 
-def evaluate_model(disease_type="parkinsons"):
+def evaluate_model(disease_type="parkinsons", model_type="hybrid"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     base_dir = r"d:\Machine Learning\Multimodal Neurodegenerative Research"
     
@@ -28,8 +28,12 @@ def evaluate_model(disease_type="parkinsons"):
         clinical_features = ["age", "gender", "updrs_score"]
 
     # Model
-    model = FusionModel(num_classes=num_classes, clinical_dim=len(clinical_features)).to(device)
-    model_path = os.path.join(base_dir, "models", f"{disease_type}_fusion_model.pth")
+    if model_type == "hybrid":
+        model = HybridFusionModel(num_classes=num_classes, clinical_dim=len(clinical_features)).to(device)
+    else:
+        model = FusionModel(num_classes=num_classes, clinical_dim=len(clinical_features)).to(device)
+        
+    model_path = os.path.join(base_dir, "models", f"{disease_type}_{model_type}_model.pth")
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path, map_location=device))
         print(f"Loaded model from {model_path}")
@@ -77,4 +81,4 @@ def evaluate_model(disease_type="parkinsons"):
     print(f"Confusion matrix saved to {save_fig}")
 
 if __name__ == "__main__":
-    evaluate_model(disease_type="parkinsons")
+    evaluate_model(disease_type="parkinsons", model_type="hybrid")

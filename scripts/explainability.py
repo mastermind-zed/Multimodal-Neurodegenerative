@@ -56,6 +56,54 @@ def overlay_heatmap(img_path, heatmap, save_path):
     cv2.imwrite(save_path, superimposed_img)
     return save_path
 
+def find_resnet_layer(model):
+    """Find the last convolutional layer in a ResNet-based Hybrid Model."""
+    if hasattr(model, 'backbone'):
+        # For our HybridFusionModel, it's in the backbone
+        return list(model.backbone.children())[-1]
+    return None
+
+def run_explainability(model_path, img_path, clinical_data, disease_type="alzheimer"):
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from models.fusion_model import HybridFusionModel
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    num_classes = 4 if disease_type == "alzheimer" else 2
+    clinical_dim = len(clinical_data)
+
+    model = HybridFusionModel(num_classes=num_classes, clinical_dim=clinical_dim).to(device)
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        print(f"Loaded model from {model_path}")
+    else:
+        print("Checkpoint not found. Running with random weights.")
+
+    target_layer = find_resnet_layer(model)
+    cam = GradCAM(model, target_layer)
+
+    # Process Image
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    image = Image.open(img_path).convert('RGB')
+    input_tensor = transform(image).unsqueeze(0).to(device)
+    clinical_tensor = torch.tensor([clinical_data], dtype=torch.float32).to(device)
+
+    heatmap = cam.generate_heatmap(input_tensor, clinical_tensor)
+    
+    save_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results", "roi_visualization.png")
+    overlay_heatmap(img_path, heatmap, save_path)
+    print(f"ROI Visualization saved to {save_path}")
+
 if __name__ == "__main__":
-    # This will be integrated into the evaluation script
-    print("Grad-CAM module implemented.")
+    from torchvision import transforms
+    print("Explainability module ready for Hybrid Fusion ROI checks.")
+    # Example usage (uncomment after training ends):
+    # model_chk = r"d:\Machine Learning\Multimodal Neurodegenerative Research\models\alzheimer_hybrid_model.pth"
+    # sample_img = r"d:\Machine Learning\Multimodal Neurodegenerative Research\data\sample.jpg"
+    # sample_clin = [75.0, 1.0, 24.0, 0.5] # Age, Gender, MMSE, CDR
+    # run_explainability(model_chk, sample_img, sample_clin)

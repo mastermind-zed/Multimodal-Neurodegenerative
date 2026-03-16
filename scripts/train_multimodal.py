@@ -8,9 +8,9 @@ import os
 
 # Add parent directory to path to import models
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from models.fusion_model import MultimodalDataset, FusionModel
+from models.fusion_model import MultimodalDataset, FusionModel, HybridFusionModel
 
-def train_model(disease_type="alzheimer", epochs=5, batch_size=32, lr=0.001):
+def train_model(disease_type="alzheimer", model_type="hybrid", epochs=5, batch_size=64, lr=0.0001):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Training on {device}...")
     
@@ -43,8 +43,12 @@ def train_model(disease_type="alzheimer", epochs=5, batch_size=32, lr=0.001):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    # Model
-    model = FusionModel(num_classes=num_classes, clinical_dim=len(clinical_features)).to(device)
+    # Model selection
+    if model_type == "hybrid":
+        model = HybridFusionModel(num_classes=num_classes, clinical_dim=len(clinical_features)).to(device)
+    else:
+        model = FusionModel(num_classes=num_classes, clinical_dim=len(clinical_features)).to(device)
+        
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -68,10 +72,10 @@ def train_model(disease_type="alzheimer", epochs=5, batch_size=32, lr=0.001):
     print("Training complete.")
     
     # Save model
-    save_path = os.path.join(base_dir, "models", f"{disease_type}_fusion_model.pth")
+    save_path = os.path.join(base_dir, "models", f"{disease_type}_{model_type}_model.pth")
     torch.save(model.state_dict(), save_path)
     print(f"Model saved to {save_path}")
 
 if __name__ == "__main__":
-    # Test run on Parkinson's first as it is smaller
-    train_model(disease_type="parkinsons", epochs=3)
+    # Full Alzheimer's Research Run
+    train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_size=64)
