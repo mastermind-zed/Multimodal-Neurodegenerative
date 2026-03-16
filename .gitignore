@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Data and Models (Large files)
+data/
+models/*.pth
+models/*.h5
+results/*.png
+results/*.csv
+
+# OS
+.DS_Store
+Thumbs.db
