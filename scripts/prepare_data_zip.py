@@ -34,6 +34,6 @@ def zip_data(source_dir, output_filename):
 if __name__ == \"__main__\":
     # Default source for Alzheimer's processed data
     source = r\"d:\Machine Learning\Multimodal Neurodegenerative Research\data\processed_alzheimer\Data\"
-    output = r\"d:\Machine Learning\Multimodal Neurodegenerative Research\alzheimer_data_colab.zip\"
+    output = r\"d:\Machine Learning\Multimodal Neurodegenerative Research\alzheimer_data.zip\"
     
     zip_data(source, output)
