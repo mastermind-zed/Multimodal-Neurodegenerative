@@ -18,8 +18,9 @@ class MultimodalDataset(Dataset):
         return len(self.metadata)
         
     def __getitem__(self, idx):
-        # Image
-        img_name = os.path.join(self.root_dir, self.metadata.iloc[idx, 0])
+        # Image path from CSV might have Windows backslashes
+        rel_path = self.metadata.iloc[idx, 0].replace('\\', os.sep)
+        img_name = os.path.join(self.root_dir, rel_path)
         image = Image.open(img_name).convert('RGB')
         
         if self.transform:
