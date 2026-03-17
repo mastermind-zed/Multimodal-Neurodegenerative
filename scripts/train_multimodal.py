@@ -1,4 +1,5 @@
 import torch
+from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
@@ -56,7 +57,8 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=5, batch_s
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
-        for imgs, clinical, labels in train_loader:
+        progress_bar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}")
+        for imgs, clinical, labels in progress_bar:
             imgs, clinical, labels = imgs.to(device), clinical.to(device), labels.to(device)
             
             optimizer.zero_grad()
@@ -66,6 +68,7 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=5, batch_s
             optimizer.step()
             
             running_loss += loss.item()
+            progress_bar.set_postfix({'loss': running_loss/len(train_loader)})
             
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}")
         
