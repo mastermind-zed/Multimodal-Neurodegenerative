@@ -116,5 +116,18 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_
     print(f"Model saved to {save_path}")
 
 if __name__ == "__main__":
-    # Focus on Parkinson's imbalance issue for this run
-    train_model(disease_type="parkinson", model_type="hybrid", epochs=15, batch_size=64)
+    import argparse
+    parser = argparse.ArgumentParser(description="Train Multimodal Neurodegenerative Models")
+    parser.add_argument("--disease", type=str, default="alzheimer", choices=["alzheimer", "parkinson"], help="Disease type to train")
+    parser.add_argument("--model", type=str, default="hybrid", choices=["fusion", "hybrid"], help="Model architecture")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs")
+    
+    args = parser.parse_args()
+    
+    # Run training
+    train_model(
+        disease_type=args.disease, 
+        model_type=args.model, 
+        epochs=args.epochs, 
+        batch_size=64
+    )
