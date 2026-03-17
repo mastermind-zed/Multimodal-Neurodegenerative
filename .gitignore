@@ -10,8 +10,6 @@ ENV/
 data/
 models/*.pth
 models/*.h5
-results/*.png
-results/*.csv
 
 # OS
 .DS_Store
