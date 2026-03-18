@@ -4,7 +4,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
 from torchvision import transforms
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
@@ -19,6 +21,10 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_
     
     # Paths
     base_dir = r"d:\Machine Learning\Multimodal Neurodegenerative Research"
+    results_dir = os.path.join(base_dir, "results")
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+
     if disease_type == "alzheimer":
         csv_file = os.path.join(base_dir, "metadata", "alzheimer_clinical.csv")
         root_dir = os.path.join(base_dir, "data", "processed_alzheimer", "Data")
@@ -46,7 +52,6 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
     
     # --- HANDLING CLASS IMBALANCE ---
-    # Get labels for the training subset
     train_labels = []
     print("Calculating class weights...")
     for i in train_dataset.indices:
@@ -54,15 +59,11 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_
         train_labels.append(label_map[label_str])
     
     class_counts = np.bincount(train_labels)
-    class_weights = 1. / class_counts
+    class_weights = 1. / (class_counts + 1e-6) # Added epsilon for safety
     sample_weights = np.array([class_weights[t] for t in train_labels])
     
-    # Sampler for training
     sampler = WeightedRandomSampler(torch.from_numpy(sample_weights).type(torch.DoubleTensor), len(sample_weights))
-    
-    # Loss weights (normalized)
     loss_weights = torch.FloatTensor(class_weights / class_weights.sum() * num_classes).to(device)
-    # --------------------------------
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -77,6 +78,7 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     # Training loop
+    best_val_recall = 0.0
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
@@ -105,10 +107,29 @@ def train_model(disease_type="alzheimer", model_type="hybrid", epochs=10, batch_
                 all_labels.extend(labels.cpu().numpy())
                 all_preds.extend(preds.cpu().numpy())
         
-        print(f"\nValidation Report Epoch {epoch+1}:")
-        print(classification_report(all_labels, all_preds, target_names=list(label_map.keys()), digits=4))
+        report = classification_report(all_labels, all_preds, target_names=list(label_map.keys()), digits=4)
+        print(f"\nValidation Report Epoch {epoch+1}:\n{report}")
         
-    print("Training complete.")
+    print("Training complete. Generating final artifacts...")
+    
+    # Final Artifact: Classification Report
+    final_report_path = os.path.join(results_dir, f"{disease_type}_report.txt")
+    with open(final_report_path, "w") as f:
+        f.write(report)
+    
+    # Final Artifact: Confusion Matrix
+    cm = confusion_matrix(all_labels, all_preds)
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=label_map.keys(), yticklabels=label_map.keys())
+    plt.title(f"Confusion Matrix - {disease_type.capitalize()} ({model_type})")
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    
+    cm_path = os.path.join(results_dir, f"{disease_type}_cm.png")
+    plt.savefig(cm_path)
+    plt.close()
+    
+    print(f"Results saved to {results_dir}")
     
     # Save model
     save_path = os.path.join(base_dir, "models", f"{disease_type}_{model_type}_model.pth")
